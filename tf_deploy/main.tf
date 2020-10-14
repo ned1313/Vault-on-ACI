@@ -117,7 +117,7 @@ resource "azurerm_resource_group" "vault" {
 
 # Storage account for persistence
 
-resource_group_name "azurerm_storage_account" "vault" {
+resource "azurerm_storage_account" "vault" {
     name = local.storage_account_name
     resource_group_name      = azurerm_resource_group.vault.name
     location                 = azurerm_resource_group.vault.location
@@ -154,7 +154,7 @@ resource "azurerm_user_assigned_identity" "vault" {
 
 # Key Vault
 
-resource "azurerm_key_vault" "example" {
+resource "azurerm_key_vault" "vault" {
   name                        = local.key_vault_name
   location                    = azurerm_resource_group.vault.location
   resource_group_name         = azurerm_resource_group.vault.name
@@ -167,7 +167,7 @@ resource "azurerm_key_vault" "example" {
 
   access_policy {
     tenant_id = data.azurerm_client_config.current.tenant_id
-    object_id = azurerm_user_assigned_identity.principal_id
+    object_id = azurerm_user_assigned_identity.vault.principal_id
 
     key_permissions = [
       "get", "list", "create", "delete", "update", "wrapKey", "unwrapKey",
@@ -175,6 +175,32 @@ resource "azurerm_key_vault" "example" {
 
   }
 
+  access_policy {
+    tenant_id = data.azurerm_client_config.current.tenant_id
+    object_id = data.azurerm_client_config.current.object_id
+
+    key_permissions = [
+      "get", "list", "create", "delete", "update", "wrapKey", "unwrapKey",
+    ]
+
+  }
+
+}
+
+resource "azurerm_key_vault_key" "vault-key" {
+  name         = "vault-key"
+  key_vault_id = azurerm_key_vault.vault.id
+  key_type     = "RSA"
+  key_size     = 2048
+
+  key_opts = [
+    "decrypt",
+    "encrypt",
+    "sign",
+    "unwrapKey",
+    "verify",
+    "wrapKey",
+  ]
 }
 
 ##########################################################################
@@ -193,7 +219,7 @@ az container create --resource-group ${azurerm_resource_group.vault.name} \
   --azure-file-volume-share-name vault-data \
   --azure-file-volume-account-key ${azurerm_storage_account.vault.primary_access_key} \
   --azure-file-volume-mount-path /vault \
-  --assign-identity ${azurerm_user_assigned_identity.id} \
+  --assign-identity ${azurerm_user_assigned_identity.vault.id} \
   --environment-variables AZURE_TENANT_ID=${data.azurerm_client_config.current.tenant_id} \
   VAULT_AZUREKEYVAULT_VAULT_NAME=${local.key_vault_name} \
   VAULT_AZUREKEYVAULT_KEY_NAME=vault-key
