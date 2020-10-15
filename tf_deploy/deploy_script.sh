@@ -1,5 +1,5 @@
 # Login and select subscription
-az Login
+az login
 az account set -s SUB_NAME
 
 # Deploy Terraform stuff
